@@ -52,9 +52,9 @@ jobs:
           fi
 
           if [[ "${{ matrix.board }}" == "raspberrypi4-64" ]]; then
-              COMPAT="InstrumentCluster-RPi4"
+              COMPAT="Synthesizer-RPi4"
           else
-              COMPAT="InstrumentCluster-RPi5"
+              COMPAT="Synthesizer-RPi5"
           fi
 
           VERSION="${{ github.ref_name }}.${{ github.run_number }}"
