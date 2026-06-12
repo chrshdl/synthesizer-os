@@ -1,0 +1,9 @@
+# Environment for instrument-cluster-proxy.service
+# Set the PlayStation 5 IP here (or via the dashboard installer)
+GT_PS_IP=
+
+# Where to publish plain telemetry (the dashboard listens here)
+GT_JSONL_OUTPUT=udp://127.0.0.1:5600
+
+# Helpful on some minimal images
+SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

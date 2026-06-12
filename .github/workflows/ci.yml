@@ -2,84 +2,102 @@ name: CI synthesizer
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'package/**'
-      - 'board/**'
-      - 'configs/**'
-      - '.github/workflows/ci.yml'
-      - 'external.mk'
-      - 'external.desc'
-      - 'Config.in'
-      
+    tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
-    inputs:
-      instrument_cluster_os_tag:
-        description: 'synthesizer OS tag to use'
-        required: false
-        default: 'main'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        board: [raspberrypi4-64]
     steps:
-      - name: Disk space (before)
-        run: df -h
-
       - name: Free disk space
         uses: endersonmenezes/free-disk-space@v3
         with:
           remove_android: true
-          remove_dotnet: true
-          remove_haskell: true
-          remove_swap: true
           remove_tool_cache: true
 
-      - name: Disk space (after)
-        run: df -h
-      
-      - name: Install dependencies
+      - name: Install host dependencies
         run: |
-          sudo apt clean
           sudo apt-get update
           sudo apt-get install -y \
             build-essential git python3 unzip rsync bc libncurses5-dev \
-            bison flex cpio unzip rsync wget libsdl2-dev libsdl2-image-dev \
-            libsdl2-mixer-dev libsdl2-ttf-dev libfreetype6-dev libjpeg-dev \
-            libpng-dev pkg-config
+            bison flex cpio wget libssl-dev libgnutls28-dev
 
       - name: Checkout this repo
         uses: actions/checkout@v4
 
-      - name: Checkout Buildroot 2025.05
+      - name: Checkout Buildroot 2025.02.10
         uses: actions/checkout@v4
         with:
           repository: "buildroot/buildroot"
-          ref: "2025.05"
+          ref: "2025.02.10"
           path: buildroot
 
-      - name: Build
+      - name: Build for ${{ matrix.board }}
         run: |
-          make -C buildroot BR2_EXTERNAL=../ O=../output raspberrypi4_64_defconfig
+          make -C buildroot BR2_EXTERNAL=../ O=../output ${{ matrix.board }}_defconfig
           make -C buildroot O=../output
-
-      - name: Rename image for release
+            
+      - name: Create RAUC Bundle
+        env:
+          RAUC_CERT: ${{ secrets.RAUC_CERT_PEM }}
+          RAUC_KEY: ${{ secrets.RAUC_KEY_PEM }}
         run: |
-          mv output/images/sdcard.img output/images/synthesizer-os-pi4_64.img
+          if [[ -z "$RAUC_CERT" ]] || [[ -z "$RAUC_KEY" ]]; then
+            echo "::error::Secrets RAUC_CERT_PEM or RAUC_KEY_PEM are missing!"
+            exit 1
+          fi
 
-      - name: Upload image to "latest" release
+          if [[ "${{ matrix.board }}" == "raspberrypi4-64" ]]; then
+              COMPAT="InstrumentCluster-RPi4"
+          else
+              COMPAT="InstrumentCluster-RPi5"
+          fi
+
+          VERSION="${{ github.ref_name }}.${{ github.run_number }}"
+          BUNDLE_DIR="board/${{ matrix.board }}/rauc-bundle-manifest"
+          
+          sed -i "s/@BOARD_COMPATIBLE@/$COMPAT/g" "$BUNDLE_DIR/manifest.raucm"
+          sed -i "s/@BUILD_VERSION@/$VERSION/g" "$BUNDLE_DIR/manifest.raucm"
+
+          echo "Checking rootfs integrity..."
+          /sbin/e2fsck -nf output/images/rootfs.ext4 || echo "::warning::Filesystem check reported issues"
+
+          cp output/images/rootfs.ext4 "$BUNDLE_DIR/rootfs.ext4"
+
+          mkdir -p keys
+          cat <<< "$RAUC_CERT" > keys/cert.pem
+          cat <<< "$RAUC_KEY" > keys/key.pem
+          chmod 600 keys/key.pem
+
+          echo "Bundling and Signing..."
+          ./output/host/bin/rauc bundle \
+            --cert keys/cert.pem \
+            --key keys/key.pem \
+            --keyring keys/cert.pem \
+            "$BUNDLE_DIR/" \
+            output/images/update-${{ matrix.board }}.raucb
+
+          ./output/host/bin/rauc info \
+            --keyring keys/cert.pem \
+            output/images/update-${{ matrix.board }}.raucb
+
+          shred -u keys/key.pem
+          rm "$BUNDLE_DIR/rootfs.ext4"
+
+      - name: Rename Factory Image
+        run: |
+          mv output/images/sdcard.img output/images/factory-${{ matrix.board }}.img
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Latest Build
-          files: output/images/synthesizer-os-pi4_64.img
-          prerelease: true
+          files: |
+            output/images/factory-${{ matrix.board }}.img
+            output/images/update-${{ matrix.board }}.raucb
         env:
           GITHUB_TOKEN: ${{ secrets.SYNTHESIZER_OS_RELEASE_PAT }}
-
-      - name: Upload output image as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: images-raspberrypi4_64
-          path: output/images/

@@ -1,0 +1,30 @@
+[Unit]
+Description=synthesizer
+After=local-fs.target splashscreen.service
+Requires=splashscreen.service
+
+StartLimitIntervalSec=60
+StartLimitBurst=3
+StartLimitAction=reboot
+
+[Service]
+# we use notify so systemd knows when initialization is actually done
+Type=notify
+
+# enable the hardware/software watchdog timer
+# if the python loop hangs for 30 seconds systemd kills the app
+WatchdogSec=30
+
+Environment=SDL_VIDEODRIVER=kmsdrm
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYOPENGL_PLATFORM=egl
+Environment=PYTHON_BASIC_REPL=1
+Environment=SYNTHESIZER_CONFIG_PATH=/data/config/synthesizer.json
+ExecStart=/usr/bin/synthesizer
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
