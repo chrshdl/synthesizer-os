@@ -41,52 +41,52 @@ jobs:
           make -C buildroot BR2_EXTERNAL=../ O=../output ${{ matrix.board }}_defconfig
           make -C buildroot O=../output
             
-      - name: Create RAUC Bundle
-        env:
-          RAUC_CERT: ${{ secrets.RAUC_CERT_PEM }}
-          RAUC_KEY: ${{ secrets.RAUC_KEY_PEM }}
-        run: |
-          if [[ -z "$RAUC_CERT" ]] || [[ -z "$RAUC_KEY" ]]; then
-            echo "::error::Secrets RAUC_CERT_PEM or RAUC_KEY_PEM are missing!"
-            exit 1
-          fi
+      # - name: Create RAUC Bundle
+      #   env:
+      #     RAUC_CERT: ${{ secrets.RAUC_CERT_PEM }}
+      #     RAUC_KEY: ${{ secrets.RAUC_KEY_PEM }}
+      #   run: |
+      #     if [[ -z "$RAUC_CERT" ]] || [[ -z "$RAUC_KEY" ]]; then
+      #       echo "::error::Secrets RAUC_CERT_PEM or RAUC_KEY_PEM are missing!"
+      #       exit 1
+      #     fi
 
-          if [[ "${{ matrix.board }}" == "raspberrypi4-64" ]]; then
-              COMPAT="Synthesizer-RPi4"
-          else
-              COMPAT="Synthesizer-RPi5"
-          fi
+      #     if [[ "${{ matrix.board }}" == "raspberrypi4-64" ]]; then
+      #         COMPAT="Synthesizer-RPi4"
+      #     else
+      #         COMPAT="Synthesizer-RPi5"
+      #     fi
 
-          VERSION="${{ github.ref_name }}.${{ github.run_number }}"
-          BUNDLE_DIR="board/${{ matrix.board }}/rauc-bundle-manifest"
+      #     VERSION="${{ github.ref_name }}.${{ github.run_number }}"
+      #     BUNDLE_DIR="board/${{ matrix.board }}/rauc-bundle-manifest"
           
-          sed -i "s/@BOARD_COMPATIBLE@/$COMPAT/g" "$BUNDLE_DIR/manifest.raucm"
-          sed -i "s/@BUILD_VERSION@/$VERSION/g" "$BUNDLE_DIR/manifest.raucm"
+      #     sed -i "s/@BOARD_COMPATIBLE@/$COMPAT/g" "$BUNDLE_DIR/manifest.raucm"
+      #     sed -i "s/@BUILD_VERSION@/$VERSION/g" "$BUNDLE_DIR/manifest.raucm"
 
-          echo "Checking rootfs integrity..."
-          /sbin/e2fsck -nf output/images/rootfs.ext4 || echo "::warning::Filesystem check reported issues"
+      #     echo "Checking rootfs integrity..."
+      #     /sbin/e2fsck -nf output/images/rootfs.ext4 || echo "::warning::Filesystem check reported issues"
 
-          cp output/images/rootfs.ext4 "$BUNDLE_DIR/rootfs.ext4"
+      #     cp output/images/rootfs.ext4 "$BUNDLE_DIR/rootfs.ext4"
 
-          mkdir -p keys
-          cat <<< "$RAUC_CERT" > keys/cert.pem
-          cat <<< "$RAUC_KEY" > keys/key.pem
-          chmod 600 keys/key.pem
+      #     mkdir -p keys
+      #     cat <<< "$RAUC_CERT" > keys/cert.pem
+      #     cat <<< "$RAUC_KEY" > keys/key.pem
+      #     chmod 600 keys/key.pem
 
-          echo "Bundling and Signing..."
-          ./output/host/bin/rauc bundle \
-            --cert keys/cert.pem \
-            --key keys/key.pem \
-            --keyring keys/cert.pem \
-            "$BUNDLE_DIR/" \
-            output/images/update-${{ matrix.board }}.raucb
+      #     echo "Bundling and Signing..."
+      #     ./output/host/bin/rauc bundle \
+      #       --cert keys/cert.pem \
+      #       --key keys/key.pem \
+      #       --keyring keys/cert.pem \
+      #       "$BUNDLE_DIR/" \
+      #       output/images/update-${{ matrix.board }}.raucb
 
-          ./output/host/bin/rauc info \
-            --keyring keys/cert.pem \
-            output/images/update-${{ matrix.board }}.raucb
+      #     ./output/host/bin/rauc info \
+      #       --keyring keys/cert.pem \
+      #       output/images/update-${{ matrix.board }}.raucb
 
-          shred -u keys/key.pem
-          rm "$BUNDLE_DIR/rootfs.ext4"
+      #     shred -u keys/key.pem
+      #     rm "$BUNDLE_DIR/rootfs.ext4"
 
       - name: Rename Factory Image
         run: |
