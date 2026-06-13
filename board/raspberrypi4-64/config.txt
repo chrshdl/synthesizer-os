@@ -7,6 +7,7 @@ kernel=u-boot.bin
 
 dtparam=i2c_arm=on
 dtparam=spi=on
+dtparam=audio=on
 
 dtoverlay=vc4-kms-v3d
 dtoverlay=vc4-kms-dsi-ili9881-7inch,rotation=270,swapxy
