@@ -94,9 +94,9 @@ if [ -n "$UNITDIR" ]; then
     ln -snf /dev/null "$T/etc/systemd/system/wpa_supplicant.service"
     rm -f "$T/etc/systemd/system/multi-user.target.wants/wpa_supplicant.service" 2>/dev/null || true
 
-    # DEBUG: Mask instrument-cluster service
-    # if [ -e "${T}/usr/lib/systemd/system/instrument-cluster.service" ]; then
-    #   ln -sf /dev/null "${T}/etc/systemd/system/instrument-cluster.service"
+    # DEBUG: Mask synthesizer service
+    # if [ -e "${T}/usr/lib/systemd/system/synthesizer.service" ]; then
+    #   ln -sf /dev/null "${T}/etc/systemd/system/synthesizer.service"
     # fi
 else
     echo "POST-BUILD: WARNING - Systemd unit directory not found. Skipping systemd tweaks."

@@ -5,24 +5,21 @@ DefaultDependencies=no
 Requires=data.mount
 After=data.mount
 # Run before any service that needs these folders
-Before=instrument-cluster.service sshd.service wpa_supplicant@wlan0.service
+Before=synthesizer.service sshd.service wpa_supplicant@wlan0.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 
-# 1. Create App Directory (Target for opt/granturismo symlink)
-ExecStart=/bin/mkdir -p /data/opt/granturismo
-
-# 2. Create Config Directory (Target for root/.config symlink)
+# 1. Create Config Directory (Target for root/.config symlink)
 ExecStart=/bin/mkdir -p /data/config
 
-# 3. Create System Directories (Targets for etc/ssh & etc/wpa_supplicant)
+# 2. Create System Directories (Targets for etc/ssh & etc/wpa_supplicant)
 ExecStart=/bin/mkdir -p /data/etc/ssh
 ExecStart=/bin/mkdir -p /data/etc/wpa_supplicant
 ExecStart=/bin/mkdir -p /data/rauc
 
-# 4. Set Permissions (Security)
+# 3. Set Permissions (Security)
 ExecStart=/bin/chmod 700 /data/etc/ssh
 ExecStart=/bin/chmod 755 /data/rauc
 

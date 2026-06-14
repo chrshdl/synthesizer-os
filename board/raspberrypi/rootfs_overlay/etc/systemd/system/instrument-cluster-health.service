@@ -1,5 +1,5 @@
 [Unit]
-Description=Instrument Cluster health monitor for RAUC
+Description=Synthesizer health monitor
 ConditionPathExists=/usr/bin/rauc
 
 # DEPENDENCIES
@@ -8,10 +8,10 @@ After=data.mount
 
 # LOGIC:
 # This service starts AFTER the cluster reports READY=1.
-# If instrument-cluster crashes (stops), this service is stopped immediately
+# If synthesizer crashes (stops), this service is stopped immediately
 # by systemd because of "Requires=".
-Requires=instrument-cluster.service
-After=instrument-cluster.service
+Requires=synthesizer.service
+After=synthesizer.service
 
 [Service]
 # CHANGE 1: Use 'simple' so boot continues immediately

@@ -12,7 +12,7 @@ PYTHON_PYGAME_261_LICENSE_FILES = LGPL
 
 PYTHON_PYGAME_261_SETUP_TYPE = pep517
 
-PYTHON_PYGAME_261_DEPENDENCIES = sdl2 sdl2_image sdl2_ttf libpng jpeg freetype
+PYTHON_PYGAME_261_DEPENDENCIES = sdl2 sdl2_image sdl2_mixer sdl2_ttf libpng jpeg freetype
 
 PYTHON_PYGAME_261_ENV += SDL_CONFIG="$(STAGING_DIR)/usr/bin/sdl2-config"
 
