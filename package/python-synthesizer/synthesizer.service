@@ -21,6 +21,9 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYOPENGL_PLATFORM=egl
 Environment=PYTHON_BASIC_REPL=1
 Environment=SYNTHESIZER_CONFIG_PATH=/data/config/synthesizer.json
+ExecStartPre=-/usr/bin/amixer -M sset Headphone 80%
+ExecStartPre=-/usr/bin/amixer -M sset Master 80%
+ExecStartPre=-/usr/bin/amixer -M sset PCM 80%
 ExecStart=/usr/bin/synthesizer
 
 Restart=always
