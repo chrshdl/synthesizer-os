@@ -3,7 +3,7 @@
 ################################################################################
 
 # Use the specific version tag
-PYTHON_SYNTHESIZER_VERSION = 0.1.8
+PYTHON_SYNTHESIZER_VERSION = 0.1.10
 PYTHON_SYNTHESIZER_SITE = $(call github,chrshdl,synthesizer,v$(PYTHON_SYNTHESIZER_VERSION))
 
 PYTHON_SYNTHESIZER_LICENSE = MIT
