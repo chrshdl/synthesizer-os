@@ -98,6 +98,44 @@ if [ -n "$UNITDIR" ]; then
     # if [ -e "${T}/usr/lib/systemd/system/synthesizer.service" ]; then
     #   ln -sf /dev/null "${T}/etc/systemd/system/synthesizer.service"
     # fi
+
+    # --------------------------------------------------------------------------
+    # PipeWire / WirePlumber / D-Bus Hotfixes
+    # --------------------------------------------------------------------------
+    # patch WirePlumber's alsa.lua to avoid crash when node_name is nil
+    ALSA_LUA="$T/usr/share/wireplumber/scripts/monitors/alsa.lua"
+    if [ -f "$ALSA_LUA" ]; then
+        sed -i 's/node_names_table\[node_name\] = nil/if node_name then node_names_table[node_name] = nil end/g' "$ALSA_LUA"
+        echo "POST-BUILD: Patched wireplumber alsa.lua"
+    fi
+
+    # update WirePlumber service to use dbus-run-session for proper device discovery
+    WP_SERVICE="$T$UNITDIR/wireplumber.service"
+    if [ -f "$WP_SERVICE" ]; then
+        sed -i 's|ExecStart=/usr/bin/wireplumber|ExecStart=/usr/bin/dbus-run-session /usr/bin/wireplumber|g' "$WP_SERVICE"
+        echo "POST-BUILD: Patched wireplumber.service to use dbus-run-session"
+    fi
+
+    # redirect WirePlumber state to /data/wireplumber (writable partition)
+    mkdir -p "$T/etc/systemd/system/wireplumber.service.d"
+    cat <<OV > "$T/etc/systemd/system/wireplumber.service.d/state.conf"
+[Service]
+Environment=WIREPLUMBER_STATE_DIR=/data/wireplumber
+OV
+    echo "POST-BUILD: Configured WirePlumber state redirect to /data/wireplumber"
+
+    # fix bluez.lua to ignore seat state (fixes device discovery in headless)
+    BLUEZ_LUA="$T/usr/share/wireplumber/scripts/monitors/bluez.lua"
+    if [ -f "$BLUEZ_LUA" ]; then
+        sed -i 's/if seat_state == "active" then/if true then/g' "$BLUEZ_LUA"
+        echo "POST-BUILD: Patched wireplumber bluez.lua"
+    fi
+    # 5. Ensure machine-id exists for D-Bus
+    if [ ! -f "$T/etc/machine-id" ]; then
+        mkdir -p "$T/etc"
+        printf "0123456789abcdef0123456789abcdef" > "$T/etc/machine-id"
+        echo "POST-BUILD: Created /etc/machine-id"
+    fi
 else
     echo "POST-BUILD: WARNING - Systemd unit directory not found. Skipping systemd tweaks."
 fi

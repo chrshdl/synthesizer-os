@@ -21,6 +21,7 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYOPENGL_PLATFORM=egl
 Environment=PYTHON_BASIC_REPL=1
 Environment=SYNTHESIZER_CONFIG_PATH=/data/config/synthesizer.json
+Environment=PIPEWIRE_RUNTIME_DIR=/run/pipewire
 ExecStartPre=-/usr/bin/amixer -M sset Headphone 80%
 ExecStartPre=-/usr/bin/amixer -M sset Master 80%
 ExecStartPre=-/usr/bin/amixer -M sset PCM 80%
