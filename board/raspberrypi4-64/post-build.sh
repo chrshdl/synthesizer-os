@@ -130,12 +130,6 @@ OV
         sed -i 's/if seat_state == "active" then/if true then/g' "$BLUEZ_LUA"
         echo "POST-BUILD: Patched wireplumber bluez.lua"
     fi
-    # 5. Ensure machine-id exists for D-Bus
-    if [ ! -f "$T/etc/machine-id" ]; then
-        mkdir -p "$T/etc"
-        printf "0123456789abcdef0123456789abcdef" > "$T/etc/machine-id"
-        echo "POST-BUILD: Created /etc/machine-id"
-    fi
 else
     echo "POST-BUILD: WARNING - Systemd unit directory not found. Skipping systemd tweaks."
 fi
