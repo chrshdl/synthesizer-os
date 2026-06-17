@@ -16,15 +16,27 @@ Type=notify
 WatchdogSec=30
 
 Environment=SDL_VIDEODRIVER=kmsdrm
+# Use ALSA as the SDL audio driver so it goes through the ALSA→PipeWire plugin
+# defined in /etc/asound.conf. Directly targeting PipeWire from a system service
+# fails because XDG_RUNTIME_DIR is not set and SDL can't find the socket.
+Environment=SDL_AUDIODRIVER=alsa
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYOPENGL_PLATFORM=egl
 Environment=PYTHON_BASIC_REPL=1
 Environment=SYNTHESIZER_CONFIG_PATH=/data/config/synthesizer.json
 Environment=PIPEWIRE_RUNTIME_DIR=/run/pipewire
-ExecStartPre=-/usr/bin/amixer -M sset Headphone 80%
-ExecStartPre=-/usr/bin/amixer -M sset Master 80%
-ExecStartPre=-/usr/bin/amixer -M sset PCM 80%
+# Tell ALSA-PipeWire plugin where the PipeWire socket lives.
+# Matches PIPEWIRE_RUNTIME_DIR above.
+Environment=XDG_RUNTIME_DIR=/run/pipewire
+# Request a PipeWire quantum that matches our SDL mixer buffer (512 frames @ 44100 Hz).
+# A mismatched quantum forces PipeWire to resample/rebuffer → xruns over Bluetooth.
+# Quotes allow the space-separated PipeWire properties in a single Environment= line.
+Environment="PIPEWIRE_PROPS=audio.rate=44100 audio.quantum=512"
+# Set raw hardware volume to 80% unconditionally on boot.
+# We do not use '-M' (mapped) because it creates a massively compressed volume curve.
+ExecStartPre=-/usr/bin/amixer sset Master 80%
+ExecStartPre=-/usr/bin/amixer sset Headphone 80%
 ExecStart=/usr/bin/synthesizer
 
 Restart=always
