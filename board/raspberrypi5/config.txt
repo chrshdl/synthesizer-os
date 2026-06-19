@@ -1,0 +1,22 @@
+enable_uart=1
+arm_64bit=1
+
+disable_splash=1
+
+kernel=Image
+
+dtparam=i2c_arm=on
+dtparam=spi=on
+# Disable onboard audio to prefer UGREEN USB soundcard
+dtparam=audio=off
+
+# Enable KMS graphics for modern displays
+dtoverlay=vc4-kms-v3d
+
+# Enable Waveshare 7" DSI LCD (C)
+dtoverlay=vc4-kms-dsi-waveshare-panel,7_0_inchC,i2c1
+
+# Some Waveshare panels work best with 2 framebuffers (helps with tearing)
+max_framebuffers=2
+
+gpu_mem=256
