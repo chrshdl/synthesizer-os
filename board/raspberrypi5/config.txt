@@ -3,7 +3,7 @@ arm_64bit=1
 
 disable_splash=1
 
-kernel=Image
+kernel=u-boot.bin
 
 dtparam=i2c_arm=on
 dtparam=spi=on

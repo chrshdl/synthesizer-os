@@ -8,6 +8,15 @@ BOARD_DIR="$(dirname $0)"
 GENIMAGE_CFG="${BOARD_DIR}/genimage.cfg"
 GENIMAGE_TMP="${BUILD_DIR}/genimage.tmp"
 
+# 1. Compile U-Boot script (boot.cmd -> boot.scr)
+# This is the "brain" of the A/B switching logic.
+# Requires 'host-uboot-tools' to be enabled in menuconfig.
+if [ -f "${BOARD_DIR}/boot.cmd" ]; then
+    echo "Generating boot.scr from ${BOARD_DIR}/boot.cmd..."
+    "${HOST_DIR}/bin/mkimage" -A arm64 -T script -C none -n "U-Boot boot script" \
+        -d "${BOARD_DIR}/boot.cmd" "${BINARIES_DIR}/boot.scr"
+fi
+
 # 2. Copy wpa_supplicant-wlan0.conf template into BINARIES_DIR
 # This allows genimage to find it and put it on the FAT partition.
 cp -f "${BOARD_DIR}/wpa_supplicant-wlan0.conf" \
