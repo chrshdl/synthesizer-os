@@ -21,6 +21,7 @@ Environment=SDL_VIDEODRIVER=kmsdrm
 # fails because XDG_RUNTIME_DIR is not set and SDL can't find the socket.
 Environment=SDL_AUDIODRIVER=alsa
 Environment=PYTHONUNBUFFERED=1
+Environment=MESA_LOADER_DRIVER_OVERRIDE=vc4
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYOPENGL_PLATFORM=egl
 Environment=PYTHON_BASIC_REPL=1
