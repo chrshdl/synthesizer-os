@@ -123,6 +123,8 @@ if [ -n "$UNITDIR" ]; then
     cat <<OV > "$T/etc/systemd/system/wireplumber.service.d/state.conf"
 [Service]
 Environment=XDG_STATE_HOME=/data
+ExecStartPre=+/usr/bin/mkdir -p /data/wireplumber
+ExecStartPre=+/usr/bin/chown pipewire:pipewire /data/wireplumber
 OV
     echo "POST-BUILD: Configured WirePlumber state redirect to /data/wireplumber"
 
