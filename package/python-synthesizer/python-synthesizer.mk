@@ -3,14 +3,14 @@
 ################################################################################
 
 # Use the specific version tag
-PYTHON_SYNTHESIZER_VERSION = 0.1.16
+PYTHON_SYNTHESIZER_VERSION = 0.1.18
 PYTHON_SYNTHESIZER_SITE = $(call github,chrshdl,synthesizer,v$(PYTHON_SYNTHESIZER_VERSION))
 
 PYTHON_SYNTHESIZER_LICENSE = MIT
 PYTHON_SYNTHESIZER_LICENSE_FILES = LICENSE
 
 PYTHON_SYNTHESIZER_SETUP_TYPE = pep517
-PYTHON_SYNTHESIZER_DEPENDENCIES = python-pygame-261 python-numpy
+PYTHON_SYNTHESIZER_DEPENDENCIES = python-pygame-261 python-numpy synthesizer-audio-engine
 
 define PYTHON_SYNTHESIZER_INSTALL_INIT_SYSTEMD
 	$(INSTALL) -D -m 0644 $(BR2_EXTERNAL)/package/python-synthesizer/synthesizer.service \

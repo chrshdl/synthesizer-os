@@ -2,7 +2,10 @@
 config BR2_PACKAGE_PYTHON_SYNTHESIZER
 	bool "python-synthesizer"
 	depends on BR2_PACKAGE_PYTHON3
+	depends on BR2_INSTALL_LIBSTDCPP
 	select BR2_PACKAGE_PYTHON_PYGAME_261
 	select BR2_PACKAGE_PYTHON_NUMPY
+	select BR2_PACKAGE_SYNTHESIZER_AUDIO_ENGINE
 	help
-	  Additive synthesizer using Pygame and Numpy.
+	  Additive synthesizer using Pygame, Numpy, and a low-latency
+	  C++ ALSA audio engine (libsynthengine.so).

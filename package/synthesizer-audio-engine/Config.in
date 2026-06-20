@@ -1,0 +1,10 @@
+
+config BR2_PACKAGE_SYNTHESIZER_AUDIO_ENGINE
+	bool "synthesizer-audio-engine"
+	depends on BR2_INSTALL_LIBSTDCPP
+	depends on BR2_PACKAGE_ALSA_LIB
+	help
+	  Low-latency C++17 ALSA audio engine for the additive synthesizer.
+	  Exposes a C ABI shared library (libsynthengine.so) that the Python
+	  synthesizer package loads via ctypes for near-zero-overhead audio
+	  generation and playback.
