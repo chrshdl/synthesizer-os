@@ -26,7 +26,7 @@ for BOOT_SLOT in "${BOOT_ORDER}"; do
 done
 
 if test -n "${raucslot}"; then
-  setenv bootargs "root=/dev/mmcblk0p${raucpart} rauc.slot=${raucslot} rootwait console=tty3 console=ttyAMA0,115200 quiet loglevel=3 video=HDMI-A-1:d video=HDMI-A-2:d logo.nologo vt.global_cursor_default=0 systemd.show_status=0 cma=256M"
+  setenv bootargs "root=/dev/mmcblk0p${raucpart} rauc.slot=${raucslot} rootwait console=tty3 console=ttyAMA0,115200 quiet loglevel=3 video=HDMI-A-1:d video=HDMI-A-2:d logo.nologo vt.global_cursor_default=0 systemd.show_status=0"
   
   # Silence U-Boot's internal echoes by using 'setenv silent 1' 
   # (Requires U-Boot to be compiled with CONFIG_SILENT_CONSOLE=y)
