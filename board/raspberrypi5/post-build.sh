@@ -122,7 +122,7 @@ if [ -n "$UNITDIR" ]; then
     mkdir -p "$T/etc/systemd/system/wireplumber.service.d"
     cat <<OV > "$T/etc/systemd/system/wireplumber.service.d/state.conf"
 [Service]
-Environment=WIREPLUMBER_STATE_DIR=/data/wireplumber
+Environment=XDG_STATE_HOME=/data
 OV
     echo "POST-BUILD: Configured WirePlumber state redirect to /data/wireplumber"
 
