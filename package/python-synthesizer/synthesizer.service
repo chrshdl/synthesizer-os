@@ -1,6 +1,6 @@
 [Unit]
 Description=synthesizer
-After=local-fs.target splashscreen.service
+After=local-fs.target splashscreen.service sound.target wireplumber.service
 Requires=splashscreen.service
 
 StartLimitIntervalSec=60
