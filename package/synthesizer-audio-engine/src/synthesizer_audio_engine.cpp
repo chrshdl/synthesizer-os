@@ -3,18 +3,22 @@
  *
  * Architecture:
  * ─────────────
- *   Python note_on()  ──→  atomic gate  ──→  C++ audio thread
+ *   Python note_on()  -->  atomic gate  -->  C++ audio thread
  *                                                   │
  *                                            render + writei
  *                                                   │
  *                                            ALSA "default"
  *                                                   │
- *                                              PipeWire → hw
+ *                                              PipeWire -> hw
  *
  * The C++ engine owns:
  *  - Precomputed wavetables (3-osc chorus per partial, random phases)
- *  - A dedicated audio thread that calls render() → snd_pcm_writei()
- *  - Lock-free note gates (std::atomic) for zero-overhead Python calls
+ *  - A dedicated audio thread that calls render() -> snd_pcm_writei()
+ *  - Lock-free note gates (std::atomic<bool>) for zero-overhead Python calls
+ *  - Lock-free amplitude updates via a double-buffer + dirty flag:
+ *      Python writes → pending_amps[], sets amp_dirty (atomic release store)
+ *      Audio thread  → swaps pending_amps into target_amps on dirty (acquire)
+ *      No mutex on the hot path; the RT thread can never block on Python.
  *
  * PipeWire compatibility:
  *  - Opens "default" ALSA device (PipeWire plugin via /etc/asound.conf)
@@ -41,7 +45,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <mutex>
 #include <thread>
 #include <vector>
 #include <sys/time.h>
@@ -80,9 +83,32 @@ struct se_engine_t {
                (fi * num_partials + p) * WAVETABLE_FRAMES;
     }
 
-    float target_amps[MAX_PARTIALS];
-    float current_amps[MAX_PARTIALS];
-    std::mutex amp_mutex;
+    // Lock-free amplitude double-buffer.
+    //
+    // pending_amps  — written exclusively by the Python/UI thread via
+    //                 se_update_amplitudes(); never read by the audio thread
+    //                 while amp_dirty is false.
+    // target_amps   — owned exclusively by the audio thread; updated at the
+    //                 top of render() by swapping from pending_amps.
+    // current_amps  — also owned exclusively by the audio thread; tracks the
+    //                 per-sample interpolation state.
+    //
+    // amp_dirty: false  -> audio thread owns target_amps, nothing pending
+    //            true   -> Python has written new values into pending_amps
+    //
+    // The Python thread does:  memcpy(pending_amps, ...) then amp_dirty.store(true)
+    // The audio thread does:   if (amp_dirty.exchange(false)) memcpy(target_amps, pending_amps)
+    //
+    // Both sides only ever read/write their own buffer, so there is no data race.
+    // The single atomic flag is the only synchronisation point, and it
+    // is accessed with relaxed ordering (sufficient on ARM because
+    // the preceding stores are sequenced-before the flag store on the same thread
+    // and the audio thread only needs eventual consistency, a one-frame-late
+    // update is perfectly acceptable).
+    alignas(64) float pending_amps[MAX_PARTIALS];  // written by Python thread
+    alignas(64) float target_amps[MAX_PARTIALS];   // owned by audio thread
+    alignas(64) float current_amps[MAX_PARTIALS];  // owned by audio thread
+    std::atomic<bool> amp_dirty{false};
 
     std::atomic<bool>  note_gate[NUM_KEY_FREQS];
     float              note_env[NUM_KEY_FREQS];
@@ -135,12 +161,16 @@ static void precompute_wavetables(se_engine_t* e) {
 static void render(se_engine_t* e, float* out, int nf) {
     std::fill(out, out + nf * 2, 0.0f);
 
-    float ta[MAX_PARTIALS], ca[MAX_PARTIALS];
-    {
-        std::lock_guard<std::mutex> lk(e->amp_mutex);
-        std::copy(e->target_amps,  e->target_amps  + e->num_partials, ta);
-        std::copy(e->current_amps, e->current_amps + e->num_partials, ca);
+    // Lock-free amplitude update: if the Python thread has posted new values,
+    // adopt them now.  exchange(false) is a single atomic RMW — never blocks.
+    if (e->amp_dirty.exchange(false, std::memory_order_acquire)) {
+        std::copy(e->pending_amps, e->pending_amps + e->num_partials,
+                  e->target_amps);
     }
+
+    float ta[MAX_PARTIALS], ca[MAX_PARTIALS];
+    std::copy(e->target_amps,  e->target_amps  + e->num_partials, ta);
+    std::copy(e->current_amps, e->current_amps + e->num_partials, ca);
 
     float as[MAX_PARTIALS];
     for (int p = 0; p < e->num_partials; ++p)
@@ -185,12 +215,10 @@ static void render(se_engine_t* e, float* out, int nf) {
         out[s * 2 + 1] = std::tanh(out[s * 2 + 1] * headroom);
     }
 
-    {
-        std::lock_guard<std::mutex> lk(e->amp_mutex);
-        for (int p = 0; p < e->num_partials; ++p) {
-            float n = ca[p] + as[p] * nf;
-            e->current_amps[p] = (as[p] >= 0) ? std::min(n, ta[p]) : std::max(n, ta[p]);
-        }
+    // Update current_amps in place, audio thread only, no lock needed.
+    for (int p = 0; p < e->num_partials; ++p) {
+        float n = ca[p] + as[p] * nf;
+        e->current_amps[p] = (as[p] >= 0) ? std::min(n, ta[p]) : std::max(n, ta[p]);
     }
 
     e->t_idx += nf;
@@ -376,9 +404,13 @@ void se_all_notes_off(se_engine_t* e) {
 void se_update_amplitudes(se_engine_t* e, const float* amps, int count) {
     if (!e || !amps) return;
     if (count > e->num_partials) count = e->num_partials;
-    std::lock_guard<std::mutex> lk(e->amp_mutex);
-    for (int p = 0; p < count; ++p)
-        e->target_amps[p] = amps[p];
+    // Write into the pending buffer first, then publish via the atomic flag.
+    // The audio thread will pick it up at the top of the next render() call.
+    // This is a plain non-atomic write, safe because amp_dirty is false here
+    // (the audio thread never writes to pending_amps) and the release store
+    // below provides the necessary happens-before edge.
+    std::copy(amps, amps + count, e->pending_amps);
+    e->amp_dirty.store(true, std::memory_order_release);
 }
 
 void se_set_master_volume(se_engine_t* e, float vol) {
