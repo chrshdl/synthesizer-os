@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         board: [raspberrypi5, raspberrypi4-64]
+        build_type: [debug, release]
     steps:
       - name: Free disk space
         uses: endersonmenezes/free-disk-space@v3
@@ -42,15 +43,19 @@ jobs:
       - name: Build for ${{ matrix.board }}
         run: |
           make -C buildroot BR2_EXTERNAL=../ O=../output ${{ matrix.board }}_defconfig
+          if [ "${{ matrix.build_type }}" = "release" ]; then
+            ./buildroot/support/kconfig/merge_config.sh -m -O ./output ./output/.config ./configs/release.fragment
+            make -C buildroot O=../output olddefconfig
+          fi
           make -C buildroot O=../output
 
       - name: Rename Image
         run: |
-          mv output/images/sdcard.img output/images/synthesizer-os-${{ github.ref_name }}-${{ matrix.board }}.img
+          mv output/images/sdcard.img output/images/synthesizer-os-${{ github.ref_name }}-${{ matrix.board }}-${{ matrix.build_type }}.img
 
       - name: Upload to Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            output/images/synthesizer-os-${{ github.ref_name }}-${{ matrix.board }}.img
+            output/images/synthesizer-os-${{ github.ref_name }}-${{ matrix.board }}-${{ matrix.build_type }}.img
